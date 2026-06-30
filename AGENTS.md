@@ -2,7 +2,7 @@
 
 ## Project
 
-This repository is the public partner information base for Iskra by 2030AI.
+This repository is the public partner information base for Iskra by the company Iskra.
 
 ## Purpose
 
