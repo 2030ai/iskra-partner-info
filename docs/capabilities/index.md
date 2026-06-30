@@ -10,7 +10,7 @@
 - `pilot` — доступно для пилотов или ограниченных запусков, требует предварительного согласования.
 - `requires_setup` — доступно, но требует настройки, контента, ролей, инфраструктуры или регламентов.
 - `requires_custom_project` — продаётся как внедрение, интеграция, MCP/skill-разработка или кастомизация.
-- `roadmap` — нельзя продавать как готовую функцию; можно обсуждать как направление развития.
+- `roadmap` — направление развития, которое не входит в готовый продаваемый scope.
 
 ## Индекс
 
@@ -22,5 +22,4 @@
 - [Организации и администрирование](organizations-and-admin.md) — `available`
 - [Навыки и интеграции](skills-and-integrations.md) — `requires_custom_project`
 - [Безопасность и инспектор](security-and-inspector.md) — `requires_setup`
-- [Тьютор и ROI](tutor-and-roi.md) — `pilot`
 - [Развёртывание и LLM](deployment-and-llm.md) — `requires_custom_project`

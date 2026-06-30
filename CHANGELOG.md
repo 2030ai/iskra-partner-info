@@ -4,6 +4,13 @@ All notable public content changes in this repository are documented here.
 
 The format follows Keep a Changelog, and this repository uses calendar-based public documentation releases.
 
+## [0.1.2] - 2026-06-30
+
+### Changed
+
+- Reworked public legal, deployment, and partner-process pages into client-safe wording.
+- Removed an experimental capability page from the first public scope.
+
 ## [0.1.1] - 2026-06-30
 
 ### Changed
