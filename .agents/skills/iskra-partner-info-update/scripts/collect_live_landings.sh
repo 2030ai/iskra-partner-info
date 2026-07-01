@@ -1,0 +1,516 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+for required_command in bash curl grep mktemp python3 sed tr awk date dirname pwd rm; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'required command not found: %s\n' "$required_command" >&2
+    exit 127
+  fi
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+cd "$REPO_ROOT"
+
+OUTPUT="temp/iskra-partner-info-update/live-landings.md"
+TIMEOUT=20
+
+usage() {
+  printf 'usage: %s [--output PATH] [--timeout SECONDS]\n' "${0##*/}"
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      OUTPUT=$2
+      shift 2
+      ;;
+    --output=*)
+      OUTPUT=${1#--output=}
+      shift
+      ;;
+    --timeout)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      TIMEOUT=$2
+      shift 2
+      ;;
+    --timeout=*)
+      TIMEOUT=${1#--timeout=}
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$TIMEOUT" in
+  ''|*[!0-9]*)
+    printf 'invalid --timeout value, expected positive integer seconds: %s\n' "$TIMEOUT" >&2
+    exit 2
+    ;;
+esac
+RAW_TIMEOUT=$TIMEOUT
+TIMEOUT=$((10#$TIMEOUT))
+if [ "$TIMEOUT" -le 0 ]; then
+  printf 'invalid --timeout value, expected positive integer seconds: %s\n' "$RAW_TIMEOUT" >&2
+  exit 2
+fi
+
+SKILL_FILE=".agents/skills/iskra-partner-info-update/SKILL.md"
+
+DEFAULT_URLS=(
+  "https://iskrabot.ru/sitemap.xml"
+  "https://iskrabot.ru/"
+  "https://iskrabot.ru/dlya-biznesa/"
+  "https://iskrabot.ru/enterprise/"
+  "https://iskrabot.ru/baza-znaniy/"
+  "https://iskrabot.ru/partner/"
+  "https://cloud.iskrabot.ru/lp/b2b"
+  "https://cloud.iskrabot.ru/lp/demo"
+  "https://cloud.iskrabot.ru/lp/tryiskra"
+  "https://cloud.iskrabot.ru/lp/health"
+  "https://platform.iskrabot.ru/"
+)
+
+DEFAULT_PATTERNS=(
+  "152-ФЗ"
+  "ФСТЭК"
+  "реестр российского ПО"
+  "не передаются третьим лицам"
+  "не покидают"
+  "без внешних LLM"
+  "полностью локально"
+  "данные в России"
+  "on-premise"
+)
+
+ALWAYS_PATTERNS=(
+  "партнёрская программа"
+  "партнерская программа"
+  "вознагражд"
+  "рефераль"
+  "реферал"
+  "промо-код"
+  "промокод"
+)
+
+RISK_REGEX_LABELS=(
+  "partner economics / reward claim"
+)
+
+RISK_REGEXES=(
+  "(получайте|зарабатывайте)[[:space:]]+[0-9]+[[:space:]]*%|[0-9]+[[:space:]]*%[^[:cntrl:]]{0,120}(платеж|оплат|привед(е|ё)н|клиент|партн(е|ё)р|комисс|вознагражд)|партн(е|ё)рск[^[:cntrl:]]{0,120}(процент|выплат|комисс|вознагражд|доход|заработ)"
+)
+
+URLS=()
+PATTERNS=()
+
+is_allowed_live_url() {
+  python3 - "$1" <<'PY'
+from urllib.parse import urlparse
+import sys
+
+parsed = urlparse(sys.argv[1])
+host = (parsed.hostname or "").lower().rstrip(".")
+if parsed.scheme == "https" and (host == "iskrabot.ru" or host.endswith(".iskrabot.ru")):
+    sys.exit(0)
+sys.exit(1)
+PY
+}
+
+if [ -f "$SKILL_FILE" ] && command -v perl >/dev/null 2>&1; then
+  skill_output="$(
+    perl -ne '
+      BEGIN { $section = ""; $in_sensitive = 0; }
+      chomp;
+      if (/^##\s+(.*)/) {
+        $section = lc($1);
+        $in_sensitive = 0;
+        next;
+      }
+      if (/^###\s+(.*)/) {
+        $section = lc($1);
+        $in_sensitive = 0;
+        next;
+      }
+      if ($section eq "classification") {
+        my $normalized = lc($_);
+        $normalized =~ s/^\s+|\s+$//g;
+        $normalized =~ s/:$//;
+        if ($normalized =~ /^(safe update|discrepancy|sensitive blocker|no-op)$/) {
+          $in_sensitive = ($normalized eq "sensitive blocker");
+          next;
+        }
+      }
+      next unless /^-\s+(.*)/;
+      my $item = $1;
+      if ($section eq "marketing and live site sources") {
+        while ($item =~ m{https?://[^\s`>\]\)}"\x27]+}g) {
+          my $url = $&;
+          $url =~ s/[.,);\]\}"]+$//;
+          print "URL\t$url\n";
+        }
+      } elsif ($section eq "public wording rules") {
+        while ($item =~ /`([^`]+)`/g) {
+          my $pattern = $1;
+          $pattern =~ s/^\s+|\s+$//g;
+          print "PATTERN\t$pattern\n" if length $pattern;
+        }
+      } elsif ($section eq "classification" && $in_sensitive) {
+        my $pattern = $item;
+        $pattern =~ s/^`|`$//g;
+        $pattern =~ s/^\s+|\s+$//g;
+        print "PATTERN\t$pattern\n" if length $pattern;
+      }
+    ' "$SKILL_FILE" 2>/dev/null || true
+  )"
+
+  while IFS=$'\t' read -r kind value; do
+    case "$kind" in
+      URL)
+        if is_allowed_live_url "$value"; then
+          URLS+=("$value")
+        else
+          printf 'skipping disallowed live landing URL: %s\n' "$value" >&2
+        fi
+        ;;
+      PATTERN)
+        PATTERNS+=("$value")
+        ;;
+    esac
+  done <<< "$skill_output"
+fi
+
+if [ "${#URLS[@]}" -eq 0 ]; then
+  URLS=("${DEFAULT_URLS[@]}")
+fi
+if [ "${#PATTERNS[@]}" -eq 0 ]; then
+  PATTERNS=("${DEFAULT_PATTERNS[@]}")
+else
+  PATTERNS=("${DEFAULT_PATTERNS[@]}" "${PATTERNS[@]}")
+fi
+PATTERNS+=("${ALWAYS_PATTERNS[@]}")
+
+mkdir -p "$(dirname "$OUTPUT")"
+mkdir -p temp/iskra-partner-info-update
+TMPDIR="$(mktemp -d "temp/iskra-partner-info-update/.collect-live-landings.XXXXXX")"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+normalize_text() {
+  python3 -c 'import html, re, sys; text = html.unescape(sys.stdin.read()); sys.stdout.write(re.sub(r"\s+", " ", text).strip())' <<< "${1-}"
+}
+
+extract_field() {
+  local body_file=$1
+  local field=$2
+  python3 - "$field" "$body_file" <<'PY'
+import html
+import re
+import sys
+
+field = sys.argv[1]
+path = sys.argv[2]
+with open(path, "r", encoding="utf-8", errors="replace") as handle:
+    body = handle.read()
+
+
+def clean(text: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", text or "")
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def attr_value(attrs: str, name: str) -> str:
+    pattern = r"""\b{}\s*=\s*(['"])(.*?)\1""".format(re.escape(name))
+    match = re.search(pattern, attrs, flags=re.IGNORECASE | re.DOTALL)
+    return match.group(2) if match else ""
+
+
+if field == "title":
+    match = re.search(r"<title[^>]*>(.*?)</title>", body, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        print(clean(match.group(1)), end="")
+elif field == "description":
+    for match in re.finditer(r"<meta\b([^>]*)>", body, flags=re.IGNORECASE | re.DOTALL):
+        attrs = match.group(1)
+        if attr_value(attrs, "name").lower() == "description":
+            print(clean(attr_value(attrs, "content")), end="")
+            break
+elif field == "canonical":
+    for match in re.finditer(r"<link\b([^>]*)>", body, flags=re.IGNORECASE | re.DOTALL):
+        attrs = match.group(1)
+        if attr_value(attrs, "rel").lower() == "canonical":
+            print(clean(attr_value(attrs, "href")), end="")
+            break
+elif field == "h1":
+    values = []
+    for match in re.finditer(r"<h1\b[^>]*>(.*?)</h1>", body, flags=re.IGNORECASE | re.DOTALL):
+        value = clean(match.group(1))
+        if value:
+            values.append(value)
+        if len(values) >= 3:
+            break
+    print("\n".join(values), end="")
+PY
+}
+
+join_lines() {
+  awk 'NF { if (out != "") out = out ", "; out = out $0 } END { print out }'
+}
+
+extract_location() {
+  python3 - "$1" <<'PY'
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    for raw_line in handle:
+        if raw_line.lower().startswith(b"location:"):
+            value = raw_line.split(b":", 1)[1].strip()
+            print(value.decode("utf-8", errors="replace"), end="")
+            break
+PY
+}
+
+resolve_redirect_url() {
+  python3 - "$1" "$2" <<'PY'
+from urllib.parse import urljoin
+import sys
+
+print(urljoin(sys.argv[1], sys.argv[2]), end="")
+PY
+}
+
+collect_hits() {
+  local combined_file=$1
+  local pattern
+  local index label regex
+  local hits=""
+  for pattern in "${PATTERNS[@]}"; do
+    [ -n "$pattern" ] || continue
+    if grep -Fqi -- "$pattern" "$combined_file"; then
+      case "
+$hits
+" in
+        *"
+$pattern
+"*) ;;
+        *)
+          if [ -n "$hits" ]; then
+            hits="$hits"$'\n'"$pattern"
+          else
+            hits="$pattern"
+          fi
+          ;;
+      esac
+    fi
+  done
+  for index in "${!RISK_REGEXES[@]}"; do
+    regex="${RISK_REGEXES[$index]}"
+    label="${RISK_REGEX_LABELS[$index]}"
+    if grep -Eiq -- "$regex" "$combined_file"; then
+      case "
+$hits
+" in
+        *"
+$label
+"*) ;;
+        *)
+          if [ -n "$hits" ]; then
+            hits="$hits"$'\n'"$label"
+          else
+            hits="$label"
+          fi
+          ;;
+      esac
+    fi
+  done
+  printf '%s\n' "$hits"
+}
+
+fetch_page() {
+  local url=$1
+  local timeout=$2
+  local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display skip_reason
+  local current_url location next_url redirect_count start_epoch elapsed remaining_timeout curl_status
+
+  slug="$(printf '%s' "$url" | sed 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[^A-Za-z0-9]#_#g; s/^_//; s/_$//')"
+  body_file="$TMPDIR/${slug}.body"
+  headers_file="$TMPDIR/${slug}.headers"
+  meta_file="$TMPDIR/${slug}.meta"
+  current_url="$url"
+  redirect_count=0
+  start_epoch="$(date +%s)"
+
+  while :; do
+    remaining_timeout="$timeout"
+    if [[ "$timeout" =~ ^[0-9]+$ ]]; then
+      elapsed=$(($(date +%s) - start_epoch))
+      remaining_timeout=$((timeout - elapsed))
+      if [ "$remaining_timeout" -le 0 ]; then
+        code="fetch_error(timeout)"
+        final_url="$current_url"
+        content_type=""
+        rm -f "$body_file"
+        break
+      fi
+    fi
+    rm -f "$body_file" "$headers_file"
+    if curl_meta="$(
+      curl \
+        --disable \
+        --silent \
+        --show-error \
+        --max-time "$remaining_timeout" \
+        --user-agent "iskra-partner-info-update/1.0" \
+        --header "Accept: text/html,application/xhtml+xml,application/xml,text/plain;q=0.8,*/*;q=0.5" \
+        --dump-header "$headers_file" \
+        --output "$body_file" \
+        --write-out '%{http_code}\n%{url_effective}\n%{content_type}\n' \
+        "$current_url"
+    )"; then
+      curl_status=0
+    else
+      curl_status=$?
+    fi
+
+    printf '%s\n' "$curl_meta" > "$meta_file"
+
+    code="$(sed -n '1p' "$meta_file" | tr -d '\r')"
+    final_url="$(sed -n '2p' "$meta_file" | tr -d '\r')"
+    content_type="$(sed -n '3p' "$meta_file" | tr -d '\r')"
+
+    [ -n "$code" ] || code="fetch_error"
+    [ "$code" = "000" ] && code="fetch_error(000)"
+    [ -n "$final_url" ] || final_url="$current_url"
+
+    if [ "$curl_status" -ne 0 ]; then
+      code="fetch_error(curl_$curl_status)"
+      content_type=""
+      rm -f "$body_file"
+      break
+    fi
+
+    case "$code" in
+      3??)
+        location="$(extract_location "$headers_file")"
+        [ -n "$location" ] || break
+        next_url="$(resolve_redirect_url "$final_url" "$location")"
+        if ! is_allowed_live_url "$next_url"; then
+          code="blocked_redirect($code)"
+          final_url="$next_url"
+          content_type=""
+          rm -f "$body_file"
+          break
+        fi
+        redirect_count=$((redirect_count + 1))
+        if [ "$redirect_count" -gt 5 ]; then
+          code="redirect_limit($code)"
+          final_url="$next_url"
+          content_type=""
+          rm -f "$body_file"
+          break
+        fi
+        current_url="$next_url"
+        continue
+        ;;
+    esac
+    break
+  done
+
+  if [[ "$code" == blocked_redirect* ]] || [[ "$code" == redirect_limit* ]] || ! is_allowed_live_url "$final_url"; then
+    skip_reason="skipped: redirect not collected"
+    if [[ "$code" == blocked_redirect* ]] || ! is_allowed_live_url "$final_url"; then
+      skip_reason="skipped: redirect target outside allowlist"
+    elif [[ "$code" == redirect_limit* ]]; then
+      skip_reason="skipped: redirect limit reached"
+    fi
+    printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
+      "$code" \
+      "$final_url" \
+      "$content_type" \
+      "" \
+      "" \
+      "" \
+      "" \
+      "$skip_reason"
+    return 0
+  fi
+
+  if [ -s "$body_file" ] && (grep -qi '<html' "$body_file" || grep -qi '<title' "$body_file"); then
+    title="$(extract_field "$body_file" title)"
+    description="$(extract_field "$body_file" description)"
+    canonical="$(extract_field "$body_file" canonical)"
+    h1_list="$(extract_field "$body_file" h1)"
+  else
+    title=""
+    description=""
+    canonical=""
+    h1_list=""
+  fi
+
+  h1_display="$(printf '%s\n' "$h1_list" | join_lines)"
+
+  combined_file="$TMPDIR/${slug}.combined"
+  {
+    printf '%s\n' "$title"
+    printf '%s\n' "$description"
+    printf '%s\n' "$h1_list"
+    if [ -s "$body_file" ]; then
+      python3 - "$body_file" <<'PY'
+import html
+import re
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as handle:
+    body = handle.read()
+
+text = re.sub(r"<[^>]+>", " ", body)
+text = html.unescape(text)
+print(re.sub(r"\s+", " ", text).strip())
+PY
+    fi
+  } > "$combined_file"
+
+  hits_display="$(collect_hits "$combined_file" | join_lines)"
+
+  printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
+    "$code" \
+    "$final_url" \
+    "$content_type" \
+    "$title" \
+    "$description" \
+    "$canonical" \
+    "$h1_display" \
+    "${hits_display:-none}"
+}
+
+{
+  printf '# Live Iskra Landing Observations\n\n'
+  printf 'Collected at: `%s`\n\n' "$(date -u +%Y-%m-%dT%H:%M:%S%z)"
+  printf 'This is an observation artifact for the update automation. It is not a source of truth by itself.\n\n'
+
+  for url in "${URLS[@]}"; do
+    result="$(fetch_page "$url" "$TIMEOUT")"
+    IFS=$'\037' read -r status final_url content_type title description canonical h1_display hits_display <<< "$result"
+
+    printf '## %s\n\n' "$url"
+    printf -- '- Status: `%s`\n' "$status"
+    printf -- '- Final URL: `%s`\n' "$final_url"
+    printf -- '- Content-Type: `%s`\n' "$(normalize_text "$content_type")"
+    printf -- '- Title: %s\n' "${title:-(none)}"
+    printf -- '- Description: %s\n' "${description:-(none)}"
+    printf -- '- Canonical: %s\n' "${canonical:-(none)}"
+    printf -- '- H1: %s\n' "${h1_display:-(none)}"
+    printf -- '- Risk terms observed: %s\n\n' "${hits_display:-none}"
+  done
+} > "$OUTPUT"
+
+printf '%s\n' "$OUTPUT"

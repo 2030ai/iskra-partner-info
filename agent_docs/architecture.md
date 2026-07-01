@@ -5,7 +5,8 @@ This repository is a public Markdown knowledge base for Iskra partners.
 ## Layers
 
 - Public layer: `README.md`, `CHANGELOG.md`, `LICENSE.md`, and `docs/`.
-- Agent layer: `agent_docs/`.
+- Agent documentation layer: `agent_docs/`.
+- Agent skill layer: `.agents/skills/` is an explicitly allowed project-local automation layer for executable skills and helper scripts; it is the only committed agent-maintenance layer outside `agent_docs/`.
 - CI layer: `.github/workflows/markdownlint.yml` and `.markdownlint.json`.
 
 ## Source Of Truth
