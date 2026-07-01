@@ -349,7 +349,7 @@ The shell collector must:
 - fall back to the built-in URL list when all skill-derived URLs are filtered out;
 - always include built-in legal/risk patterns before adding skill-derived patterns;
 - include partner-economics regex checks;
-- fetch pages with `curl`;
+- fetch pages with `curl --disable` so user curl config cannot change redirect behavior;
 - record transport failures as `fetch_error(000)` instead of presenting them as ordinary HTTP responses;
 - decode HTML entities with Python stdlib `html.unescape`, not non-core Perl modules;
 - scan the full normalized response body for risky claims, truncating only human-readable output if needed;

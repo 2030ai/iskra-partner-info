@@ -352,6 +352,7 @@ fetch_page() {
     rm -f "$body_file" "$headers_file"
     if curl_meta="$(
       curl \
+        --disable \
         --silent \
         --show-error \
         --max-time "$remaining_timeout" \
