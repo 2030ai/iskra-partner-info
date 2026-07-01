@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+for required_command in git npx rg; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'required command not found: %s\n' "$required_command" >&2
+    exit 127
+  fi
+done
+
 ROOT="${1:-$(git rev-parse --show-toplevel)}"
 cd "$ROOT"
 
 fail=0
 PUBLIC_MD_FILES=()
-AGENT_MD_FILES=()
+AGENT_DOC_FILES=()
+AGENT_SCRIPT_FILES=()
 MARKDOWNLINT_CLI2_VERSION="${MARKDOWNLINT_CLI2_VERSION:-0.23.0}"
 MARKDOWN_LINK_CHECK_VERSION="${MARKDOWN_LINK_CHECK_VERSION:-3.14.2}"
 
@@ -28,13 +36,19 @@ if [ -d docs ]; then
     PUBLIC_MD_FILES+=("$file")
   done < <(find docs -type f -name '*.md' -print0)
 fi
-for agent_dir in agent_docs .agents; do
-  if [ -d "$agent_dir" ]; then
-    while IFS= read -r -d '' file; do
-      AGENT_MD_FILES+=("$file")
-    done < <(find "$agent_dir" -type f -name '*.md' -print0)
-  fi
-done
+if [ -d agent_docs ]; then
+  while IFS= read -r -d '' file; do
+    AGENT_DOC_FILES+=("$file")
+  done < <(find agent_docs -type f -name '*.md' -print0)
+fi
+if [ -d .agents ]; then
+  while IFS= read -r -d '' file; do
+    AGENT_DOC_FILES+=("$file")
+  done < <(find .agents -type f -name '*.md' -print0)
+  while IFS= read -r -d '' file; do
+    AGENT_SCRIPT_FILES+=("$file")
+  done < <(find .agents -type f \( -name '*.sh' -o -name '*.py' \) -print0)
+fi
 
 section "markdownlint"
 if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
@@ -75,11 +89,17 @@ if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
 fi
 
 section "agent hard leak scan"
-if [ "${#AGENT_MD_FILES[@]}" -gt 0 ]; then
-  if rg -n "/(Users|home|sessions)/|\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" "${AGENT_MD_FILES[@]}"; then
+AGENT_LEAK_FILES=("${AGENT_DOC_FILES[@]}" "${AGENT_SCRIPT_FILES[@]}")
+if [ "${#AGENT_DOC_FILES[@]}" -gt 0 ]; then
+  if rg -n "\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" "${AGENT_DOC_FILES[@]}"; then
     mark_fail
   fi
-  if rg -ni "BEGIN [A-Z ]*PRIVATE KEY|ssh-rsa [A-Za-z0-9+/=]{40,}|(DemoPass|api[ _-]?key|password|token|secret|iban|бик|расч[её]тный сч[её]т|корреспондентский сч[её]т)\s*[:=]" "${AGENT_MD_FILES[@]}"; then
+fi
+if [ "${#AGENT_LEAK_FILES[@]}" -gt 0 ]; then
+  if rg -n "/(Users|home|sessions)/[A-Za-z0-9._/-]+" "${AGENT_LEAK_FILES[@]}"; then
+    mark_fail
+  fi
+  if rg -ni "BEGIN [A-Z ]*PRIVATE KEY|ssh-rsa [A-Za-z0-9+/=]{40,}|(DemoPass|api[ _-]?key|password|token|secret|iban|бик|расч[её]тный сч[её]т|корреспондентский сч[её]т)\s*[:=]" "${AGENT_LEAK_FILES[@]}"; then
     mark_fail
   fi
 fi

@@ -363,10 +363,11 @@ The Python wrapper must:
 Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh` with these constraints:
 
 - build `PUBLIC_MD_FILES` from `README.md`, `CHANGELOG.md`, `LICENSE.md` and `docs/**/*.md`;
+- fail fast when required local commands such as `git`, `npx` or `rg` are unavailable;
 - use pinned `markdownlint-cli2@0.23.0` and `markdown-link-check@3.14.2`, with environment-variable overrides for planned upgrades;
 - run blocking metadata, secret-like, hard risky-wording and partner-economics scans over public Markdown files;
 - skip public `rg` scans when `PUBLIC_MD_FILES` is empty so they never widen to the whole repository;
-- run a separate blocking hard-leak scan over committed agent files under `agent_docs/` and `.agents/` for absolute paths, placeholders and actual secret-like value patterns;
+- run a separate blocking hard-leak scan over committed agent Markdown files for placeholders, and over agent Markdown plus `.agents` helper scripts for absolute paths and actual secret-like value patterns;
 - include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
 - keep the legal/risky wording scan over `agent_docs` warning-only because agent docs intentionally document forbidden examples;
 - run a legal warning scan and `git diff --check`;
