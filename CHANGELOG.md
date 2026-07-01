@@ -6,10 +6,6 @@ The format follows Keep a Changelog, and this repository uses calendar-based pub
 
 ## [0.1.3] - 2026-07-01
 
-### Removed
-
-- Removed a separate training/adoption capability page that did not belong in the public product scope.
-
 ### Added
 
 - Added partner-safe material on pilot flow, skill factory, and office-work use cases.

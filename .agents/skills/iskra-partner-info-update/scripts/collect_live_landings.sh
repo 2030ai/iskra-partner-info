@@ -51,6 +51,13 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+case "$TIMEOUT" in
+  ''|*[!0-9]*|0)
+    printf 'invalid --timeout value, expected positive integer seconds: %s\n' "$TIMEOUT" >&2
+    exit 2
+    ;;
+esac
+
 SKILL_FILE=".agents/skills/iskra-partner-info-update/SKILL.md"
 
 DEFAULT_URLS=(
@@ -325,7 +332,7 @@ $label
 fetch_page() {
   local url=$1
   local timeout=$2
-  local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display
+  local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display skip_reason
   local current_url location next_url redirect_count start_epoch elapsed remaining_timeout curl_status
 
   slug="$(printf '%s' "$url" | sed 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[^A-Za-z0-9]#_#g; s/^_//; s/_$//')"
@@ -413,6 +420,12 @@ fetch_page() {
   done
 
   if [[ "$code" == blocked_redirect* ]] || [[ "$code" == redirect_limit* ]] || ! is_allowed_live_url "$final_url"; then
+    skip_reason="skipped: redirect not collected"
+    if [[ "$code" == blocked_redirect* ]] || ! is_allowed_live_url "$final_url"; then
+      skip_reason="skipped: redirect target outside allowlist"
+    elif [[ "$code" == redirect_limit* ]]; then
+      skip_reason="skipped: redirect limit reached"
+    fi
     printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
       "$code" \
       "$final_url" \
@@ -421,7 +434,7 @@ fetch_page() {
       "" \
       "" \
       "" \
-      "skipped: redirect target outside allowlist"
+      "$skip_reason"
     return 0
   fi
 
