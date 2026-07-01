@@ -341,6 +341,7 @@ Create `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.s
 The shell collector must:
 
 - accept `--output` and `--timeout`;
+- create the parent directory for any custom `--output` path;
 - read live URLs from the skill when possible and otherwise use the built-in URL list;
 - always include built-in legal/risk patterns before adding skill-derived patterns;
 - include partner-economics regex checks;
@@ -361,7 +362,8 @@ Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh`
 
 - build `PUBLIC_MD_FILES` from `README.md`, `CHANGELOG.md`, `LICENSE.md` and `docs/**/*.md`;
 - use pinned `markdownlint-cli2@0.23.0` and `markdown-link-check@3.14.2`, with environment-variable overrides for planned upgrades;
-- run blocking metadata, secret-like, hard risky-wording and partner-economics scans only over public Markdown files;
+- run blocking metadata, secret-like, hard risky-wording and partner-economics scans over public Markdown files;
+- run a separate blocking hard-leak scan over committed agent files under `agent_docs/` and `.agents/` for absolute paths, placeholders and actual secret-like value patterns;
 - include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
 - keep `agent_docs` scans informational/non-blocking unless the local policy explicitly says otherwise;
 - run a legal warning scan and `git diff --check`;

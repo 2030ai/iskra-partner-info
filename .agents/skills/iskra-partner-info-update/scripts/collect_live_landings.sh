@@ -162,6 +162,7 @@ else
 fi
 PATTERNS+=("${ALWAYS_PATTERNS[@]}")
 
+mkdir -p "$(dirname "$OUTPUT")"
 mkdir -p temp/iskra-partner-info-update
 TMPDIR="$(mktemp -d "temp/iskra-partner-info-update/.collect-live-landings.XXXXXX")"
 trap 'rm -rf "$TMPDIR"' EXIT
