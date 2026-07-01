@@ -321,6 +321,7 @@ Expected: commit succeeds.
 ### Task 2: Deterministic Helper Scripts
 
 **Files:**
+- Create: `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.sh`
 - Create: `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py`
 - Create: `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh`
 - Test: run both scripts from repo root.
@@ -328,190 +329,28 @@ Expected: commit succeeds.
 **Interfaces:**
 - Consumes: source URLs and safety rules from Task 1.
 - Produces:
-  - executable `collect_live_landings.py` with default output `temp/iskra-partner-info-update/live-landings.md`;
+  - executable `collect_live_landings.sh` with default output `temp/iskra-partner-info-update/live-landings.md`;
+  - thin executable `collect_live_landings.py` wrapper that resolves `bash` through `PATH` and delegates to the shell collector;
   - executable `check_public_safety.sh` that returns non-zero on hard safety or Markdown verification failures.
 
 - [ ] **Step 1: Add the live landing collector**
 
-Apply this patch:
+Create `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.sh` as the canonical collector and `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py` as a compatibility wrapper.
 
-```diff
-*** Begin Patch
-*** Add File: .agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py
-+#!/usr/bin/env python3
-+"""Collect public Iskra landing metadata into a Markdown report."""
-+
-+from __future__ import annotations
-+
-+import argparse
-+import datetime as dt
-+import html
-+import re
-+import sys
-+import urllib.error
-+import urllib.request
-+from html.parser import HTMLParser
-+from pathlib import Path
-+from typing import Iterable
-+
-+
-+URLS = [
-+    "https://iskrabot.ru/sitemap.xml",
-+    "https://iskrabot.ru/",
-+    "https://iskrabot.ru/dlya-biznesa/",
-+    "https://iskrabot.ru/enterprise/",
-+    "https://iskrabot.ru/baza-znaniy/",
-+    "https://iskrabot.ru/partner/",
-+    "https://cloud.iskrabot.ru/lp/b2b",
-+    "https://cloud.iskrabot.ru/lp/demo",
-+    "https://cloud.iskrabot.ru/lp/tryiskra",
-+    "https://cloud.iskrabot.ru/lp/health",
-+    "https://platform.iskrabot.ru/",
-+]
-+
-+
-+RISK_PATTERNS = [
-+    "152-ФЗ",
-+    "ФСТЭК",
-+    "реестр российского ПО",
-+    "не передаются третьим лицам",
-+    "не покидают",
-+    "без внешних LLM",
-+    "полностью локально",
-+    "данные в России",
-+    "on-premise",
-+]
-+
-+
-+class PageParser(HTMLParser):
-+    def __init__(self) -> None:
-+        super().__init__()
-+        self.in_title = False
-+        self.title_parts: list[str] = []
-+        self.description = ""
-+        self.canonical = ""
-+        self.h1: list[str] = []
-+        self._h1_depth = 0
-+        self._h1_parts: list[str] = []
-+
-+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-+        attrs_map = {key.lower(): value or "" for key, value in attrs}
-+        tag = tag.lower()
-+        if tag == "title":
-+            self.in_title = True
-+        if tag == "meta" and attrs_map.get("name", "").lower() == "description":
-+            self.description = attrs_map.get("content", "")
-+        if tag == "link" and attrs_map.get("rel", "").lower() == "canonical":
-+            self.canonical = attrs_map.get("href", "")
-+        if tag == "h1":
-+            self._h1_depth += 1
-+            self._h1_parts = []
-+
-+    def handle_endtag(self, tag: str) -> None:
-+        tag = tag.lower()
-+        if tag == "title":
-+            self.in_title = False
-+        if tag == "h1" and self._h1_depth:
-+            text = normalize_text(" ".join(self._h1_parts))
-+            if text:
-+                self.h1.append(text)
-+            self._h1_depth = 0
-+            self._h1_parts = []
-+
-+    def handle_data(self, data: str) -> None:
-+        if self.in_title:
-+            self.title_parts.append(data)
-+        if self._h1_depth:
-+            self._h1_parts.append(data)
-+
-+    @property
-+    def title(self) -> str:
-+        return normalize_text(" ".join(self.title_parts))
-+
-+
-+def normalize_text(value: str) -> str:
-+    return re.sub(r"\s+", " ", html.unescape(value)).strip()
-+
-+
-+def fetch(url: str, timeout: int) -> tuple[int, str, str, str]:
-+    request = urllib.request.Request(
-+        url,
-+        headers={
-+            "User-Agent": "iskra-partner-info-update/1.0",
-+            "Accept": "text/html,application/xhtml+xml,application/xml,text/plain;q=0.8,*/*;q=0.5",
-+        },
-+    )
-+    try:
-+        with urllib.request.urlopen(request, timeout=timeout) as response:
-+            body = response.read().decode("utf-8", errors="replace")
-+            final_url = response.geturl()
-+            content_type = response.headers.get("content-type", "")
-+            return response.status, final_url, content_type, body
-+    except urllib.error.HTTPError as exc:
-+        body = exc.read().decode("utf-8", errors="replace")
-+        return exc.code, exc.geturl(), exc.headers.get("content-type", ""), body
-+    except Exception as exc:  # network observation script; report and continue
-+        return 0, url, f"fetch_error: {type(exc).__name__}: {exc}", ""
-+
-+
-+def risk_hits(text: str, patterns: Iterable[str]) -> list[str]:
-+    text_lower = text.lower()
-+    return [pattern for pattern in patterns if pattern.lower() in text_lower]
-+
-+
-+def render_report(urls: list[str], timeout: int) -> str:
-+    now = dt.datetime.now(dt.timezone.utc).astimezone().isoformat(timespec="seconds")
-+    lines = [
-+        "# Live Iskra Landing Observations",
-+        "",
-+        f"Collected at: `{now}`",
-+        "",
-+        "This is an observation artifact for the update automation. It is not a source of truth by itself.",
-+        "",
-+    ]
-+
-+    for url in urls:
-+        status, final_url, content_type, body = fetch(url, timeout)
-+        parser = PageParser()
-+        if "<html" in body.lower() or "<title" in body.lower():
-+            parser.feed(body)
-+        combined_text = " ".join([parser.title, parser.description, " ".join(parser.h1), body[:5000]])
-+        hits = risk_hits(combined_text, RISK_PATTERNS)
-+        lines.extend(
-+            [
-+                f"## {url}",
-+                "",
-+                f"- Status: `{status}`",
-+                f"- Final URL: `{final_url}`",
-+                f"- Content-Type: `{normalize_text(content_type)}`",
-+                f"- Title: {parser.title or '(none)'}",
-+                f"- Description: {normalize_text(parser.description) or '(none)'}",
-+                f"- Canonical: {normalize_text(parser.canonical) or '(none)'}",
-+                f"- H1: {', '.join(parser.h1[:3]) if parser.h1 else '(none)'}",
-+                f"- Risk terms observed: {', '.join(hits) if hits else 'none'}",
-+                "",
-+            ]
-+        )
-+    return "\n".join(lines).rstrip() + "\n"
-+
-+
-+def main() -> int:
-+    parser = argparse.ArgumentParser()
-+    parser.add_argument("--output", default="temp/iskra-partner-info-update/live-landings.md")
-+    parser.add_argument("--timeout", type=int, default=20)
-+    args = parser.parse_args()
-+
-+    output = Path(args.output)
-+    output.parent.mkdir(parents=True, exist_ok=True)
-+    output.write_text(render_report(URLS, args.timeout), encoding="utf-8")
-+    print(output)
-+    return 0
-+
-+
-+if __name__ == "__main__":
-+    sys.exit(main())
-*** End Patch
-```
+The shell collector must:
+
+- accept `--output` and `--timeout`;
+- read live URLs from the skill when possible and otherwise use the built-in URL list;
+- always include built-in legal/risk patterns before adding skill-derived patterns;
+- include partner-economics regex checks;
+- fetch pages with `curl`;
+- decode HTML entities with Python stdlib `html.unescape`, not non-core Perl modules;
+- write the Markdown report to `temp/iskra-partner-info-update/live-landings.md` by default.
+
+The Python wrapper must:
+
+- locate `collect_live_landings.sh` relative to itself;
+- call `os.execvp("bash", ["bash", shell_script, *sys.argv[1:]])` so `bash` is resolved through `PATH`.
 
 - [ ] **Step 2: Add the safety check script**
 
@@ -581,10 +420,11 @@ Run:
 
 ```bash
 chmod +x .agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py
+chmod +x .agents/skills/iskra-partner-info-update/scripts/collect_live_landings.sh
 chmod +x .agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh
 ```
 
-Expected: both scripts have executable bits.
+Expected: all scripts have executable bits.
 
 - [ ] **Step 4: Run the live landing collector**
 
