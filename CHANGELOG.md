@@ -4,17 +4,11 @@ All notable public content changes in this repository are documented here.
 
 The format follows Keep a Changelog, and this repository uses calendar-based public documentation releases.
 
-## [0.1.5] - 2026-07-01
+## [0.1.3] - 2026-07-01
 
 ### Removed
 
 - Removed a separate training/adoption capability page that did not belong in the public product scope.
-
-### Changed
-
-- Refocused the July release update on platform-confirmed Iskra 2.23 capabilities: headless API, API-ключи, skill UI, knowledge-base sources, OCR for image attachments, and integration-safe deployment wording.
-
-## [0.1.4] - 2026-07-01
 
 ### Added
 
@@ -22,12 +16,8 @@ The format follows Keep a Changelog, and this repository uses calendar-based pub
 
 ### Changed
 
+- Refocused the July release update on platform-confirmed Iskra 2.23 capabilities: headless API, API-ключи, skill UI, knowledge-base sources, OCR for image attachments, and integration-safe deployment wording.
 - Clarified commercial wording for org-package top-ups and on-premise license separation from LLM, infrastructure, implementation, and SLA.
-
-## [0.1.3] - 2026-07-01
-
-### Changed
-
 - Replaced risky fully-local deployment wording in the product overview with safer project-confirmation wording.
 
 ## [0.1.2] - 2026-06-30
