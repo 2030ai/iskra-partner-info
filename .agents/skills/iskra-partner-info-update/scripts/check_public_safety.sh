@@ -13,6 +13,7 @@ cd "$ROOT"
 
 fail=0
 PUBLIC_MD_FILES=()
+CLAIM_SCAN_FILES=()
 AGENT_DOC_FILES=()
 AGENT_SCRIPT_FILES=()
 MARKDOWNLINT_CLI2_VERSION="${MARKDOWNLINT_CLI2_VERSION:-0.23.0}"
@@ -36,6 +37,15 @@ if [ -d docs ]; then
     PUBLIC_MD_FILES+=("$file")
   done < <(find docs -type f -name '*.md' -print0)
 fi
+for file in "${PUBLIC_MD_FILES[@]}"; do
+  case "$file" in
+    docs/legal/claims-and-limitations.md)
+      ;;
+    *)
+      CLAIM_SCAN_FILES+=("$file")
+      ;;
+  esac
+done
 if [ -d agent_docs ]; then
   while IFS= read -r -d '' file; do
     AGENT_DOC_FILES+=("$file")
@@ -77,6 +87,13 @@ fi
 section "hard risky wording scan"
 if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
   if rg -ni "данные никогда|не уходят наружу|не передаются третьим лицам|не покидают периметр|полностью соответствует 152-фз|сертифицирован[а-я ]*фстэк" "${PUBLIC_MD_FILES[@]}"; then
+    mark_fail
+  fi
+fi
+
+section "hard unconfirmed public claim scan"
+if [ "${#CLAIM_SCAN_FILES[@]}" -gt 0 ]; then
+  if rg -ni "без внешних LLM|полностью локально|включено в реестр российского ПО" "${CLAIM_SCAN_FILES[@]}"; then
     mark_fail
   fi
 fi

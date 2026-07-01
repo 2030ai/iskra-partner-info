@@ -94,12 +94,16 @@ URLS=()
 PATTERNS=()
 
 is_allowed_live_url() {
-  case "$1" in
-    https://iskrabot.ru|https://iskrabot.ru/*|https://*.iskrabot.ru|https://*.iskrabot.ru/*)
-      return 0
-      ;;
-  esac
-  return 1
+  python3 - "$1" <<'PY'
+from urllib.parse import urlparse
+import sys
+
+parsed = urlparse(sys.argv[1])
+host = (parsed.hostname or "").lower().rstrip(".")
+if parsed.scheme == "https" and (host == "iskrabot.ru" or host.endswith(".iskrabot.ru")):
+    sys.exit(0)
+sys.exit(1)
+PY
 }
 
 if [ -f "$SKILL_FILE" ]; then
