@@ -52,11 +52,17 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$TIMEOUT" in
-  ''|*[!0-9]*|0)
+  ''|*[!0-9]*)
     printf 'invalid --timeout value, expected positive integer seconds: %s\n' "$TIMEOUT" >&2
     exit 2
     ;;
 esac
+RAW_TIMEOUT=$TIMEOUT
+TIMEOUT=$((10#$TIMEOUT))
+if [ "$TIMEOUT" -le 0 ]; then
+  printf 'invalid --timeout value, expected positive integer seconds: %s\n' "$RAW_TIMEOUT" >&2
+  exit 2
+fi
 
 SKILL_FILE=".agents/skills/iskra-partner-info-update/SKILL.md"
 
