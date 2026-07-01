@@ -112,7 +112,7 @@ If Telegram read tools are not available in the current runtime, skip Telegram s
 2. Check `git status --short`. If the repo is dirty before the run, do not edit. Send a blocker report when notifications are available.
 3. Verify expected source paths exist. Missing sources block only the claims that depend on them.
 4. Run `python3 .agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py`.
-   - The collector requires `python3`, `bash` and `curl`. A basic `perl` interpreter is used only to parse optional URLs/patterns from this skill; when unavailable, the collector falls back to its built-in URL and risk-term lists.
+   - The collector requires `python3`, `bash`, `curl`, `grep`, `mktemp`, `sed`, `tr`, `awk`, `date`, `dirname`, `pwd` and `rm`. A basic `perl` interpreter is used only to parse optional URLs/patterns from this skill; when unavailable, the collector falls back to its built-in URL and risk-term lists.
 5. Inspect changed source files since the previous run:
    - use local Git logs/status in CRM, platform, marketing and partner-info repos;
    - read live landing report from `temp/iskra-partner-info-update/live-landings.md`;
