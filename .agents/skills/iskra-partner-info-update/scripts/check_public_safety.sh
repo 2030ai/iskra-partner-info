@@ -6,6 +6,8 @@ cd "$ROOT"
 
 fail=0
 PUBLIC_MD_FILES=()
+MARKDOWNLINT_CLI2_VERSION="${MARKDOWNLINT_CLI2_VERSION:-0.23.0}"
+MARKDOWN_LINK_CHECK_VERSION="${MARKDOWN_LINK_CHECK_VERSION:-3.14.2}"
 
 section() {
   printf '\n== %s ==\n' "$1"
@@ -28,12 +30,12 @@ fi
 
 section "markdownlint"
 if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
-  npx --yes markdownlint-cli2@latest "${PUBLIC_MD_FILES[@]}" || mark_fail
+  npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}" "${PUBLIC_MD_FILES[@]}" || mark_fail
 fi
 
 section "markdown link check"
 for file in "${PUBLIC_MD_FILES[@]}"; do
-  npx --yes markdown-link-check "$file" || mark_fail
+  npx --yes "markdown-link-check@${MARKDOWN_LINK_CHECK_VERSION}" "$file" || mark_fail
 done
 
 section "hard public metadata scan"

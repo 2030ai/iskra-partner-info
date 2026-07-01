@@ -329,8 +329,18 @@ fetch_page() {
     printf '%s\n' "$description"
     printf '%s\n' "$h1_list"
     if [ -s "$body_file" ]; then
-      head -c 5000 "$body_file"
-      printf '\n'
+      python3 - "$body_file" <<'PY'
+import html
+import re
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as handle:
+    body = handle.read()
+
+text = re.sub(r"<[^>]+>", " ", body)
+text = html.unescape(text)
+print(re.sub(r"\s+", " ", text).strip())
+PY
     fi
   } > "$combined_file"
 

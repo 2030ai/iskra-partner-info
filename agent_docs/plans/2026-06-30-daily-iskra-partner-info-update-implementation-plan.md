@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the Codex cron thin and move all durable procedure into a project-local skill. Add deterministic helper scripts for live landing collection and public-content safety checks, while leaving judgment-heavy source reconciliation to the agent following the skill. Create the automation through the Codex app automation tool rather than writing automation files directly.
 
-**Tech Stack:** Markdown, Codex project skills, Bash, Python standard library, `npx markdownlint-cli2`, `npx markdown-link-check`, `rg`, Git, Codex app automation tool, `publishbotzvasil`, `telegram-read`.
+**Tech Stack:** Markdown, Codex project skills, Bash, Python standard library, pinned `npx markdownlint-cli2@0.23.0`, pinned `npx markdown-link-check@3.14.2`, `rg`, Git, Codex app automation tool, `publishbotzvasil`, `telegram-read`.
 
 ## Global Constraints
 
@@ -28,7 +28,8 @@
 ## File Structure
 
 - `.agents/skills/iskra-partner-info-update/SKILL.md` — the source of truth for the recurring update workflow: sources, safety rules, source priority, run flow, commit/report contract.
-- `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py` — fetches approved live landing URLs and writes a Markdown observation report under `temp/iskra-partner-info-update/`.
+- `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.sh` — canonical collector that fetches approved live landing URLs and writes a Markdown observation report under `temp/iskra-partner-info-update/`.
+- `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py` — compatibility wrapper that delegates to the shell collector.
 - `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh` — deterministic public-content verification: markdown lint, link check, hard forbidden text scan, risky wording warnings and `git diff --check`.
 - `agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md` — records that the repo gained a daily update automation workflow.
 - `agent_docs/development-history/README.md` — inspect only; do not edit when its local rules require timestamped filenames without a manual index entry.
@@ -41,7 +42,7 @@
 
 **Files:**
 - Create: `.agents/skills/iskra-partner-info-update/SKILL.md`
-- Test: `npx --yes markdownlint-cli2@latest .agents/skills/iskra-partner-info-update/SKILL.md`
+- Test: `npx --yes markdownlint-cli2@0.23.0 .agents/skills/iskra-partner-info-update/SKILL.md`
 
 **Interfaces:**
 - Consumes: design spec `agent_docs/plans/2026-06-30-daily-iskra-partner-info-update-design.md`.
@@ -300,7 +301,7 @@ Apply this patch:
 Run:
 
 ```bash
-npx --yes markdownlint-cli2@latest .agents/skills/iskra-partner-info-update/SKILL.md
+npx --yes markdownlint-cli2@0.23.0 .agents/skills/iskra-partner-info-update/SKILL.md
 ```
 
 Expected: `Summary: 0 error(s)`.
@@ -345,6 +346,7 @@ The shell collector must:
 - include partner-economics regex checks;
 - fetch pages with `curl`;
 - decode HTML entities with Python stdlib `html.unescape`, not non-core Perl modules;
+- scan the full normalized response body for risky claims, truncating only human-readable output if needed;
 - write the Markdown report to `temp/iskra-partner-info-update/live-landings.md` by default.
 
 The Python wrapper must:
@@ -366,6 +368,8 @@ Apply this patch:
 +cd "$ROOT"
 +
 +fail=0
++MARKDOWNLINT_CLI2_VERSION="${MARKDOWNLINT_CLI2_VERSION:-0.23.0}"
++MARKDOWN_LINK_CHECK_VERSION="${MARKDOWN_LINK_CHECK_VERSION:-3.14.2}"
 +
 +section() {
 +  printf '\n== %s ==\n' "$1"
@@ -376,12 +380,12 @@ Apply this patch:
 +}
 +
 +section "markdownlint"
-+npx --yes markdownlint-cli2@latest "**/*.md" || mark_fail
++npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}" "**/*.md" || mark_fail
 +
 +section "markdown link check"
 +shopt -s globstar nullglob
 +for file in README.md docs/**/*.md; do
-+  npx --yes markdown-link-check "$file" || mark_fail
++  npx --yes "markdown-link-check@${MARKDOWN_LINK_CHECK_VERSION}" "$file" || mark_fail
 +done
 +
 +section "hard public metadata scan"
@@ -458,7 +462,7 @@ Expected:
 Run:
 
 ```bash
-npx --yes markdownlint-cli2@latest .agents/skills/iskra-partner-info-update/SKILL.md
+npx --yes markdownlint-cli2@0.23.0 .agents/skills/iskra-partner-info-update/SKILL.md
 git diff --check
 ```
 
@@ -553,7 +557,7 @@ This repository uses timestamped development-history filenames, so the entry fil
 Run:
 
 ```bash
-npx --yes markdownlint-cli2@latest agent_docs/index.md agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md
+npx --yes markdownlint-cli2@0.23.0 agent_docs/index.md agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md
 git diff --check
 ```
 
