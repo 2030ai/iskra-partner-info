@@ -157,6 +157,8 @@ if [ "${#URLS[@]}" -eq 0 ]; then
 fi
 if [ "${#PATTERNS[@]}" -eq 0 ]; then
   PATTERNS=("${DEFAULT_PATTERNS[@]}")
+else
+  PATTERNS=("${DEFAULT_PATTERNS[@]}" "${PATTERNS[@]}")
 fi
 PATTERNS+=("${ALWAYS_PATTERNS[@]}")
 
@@ -165,50 +167,61 @@ TMPDIR="$(mktemp -d "temp/iskra-partner-info-update/.collect-live-landings.XXXXX
 trap 'rm -rf "$TMPDIR"' EXIT
 
 normalize_text() {
-  printf '%s' "${1-}" | perl -MHTML::Entities -0pe 'decode_entities($_); s/\s+/ /g; s/^\s+|\s+$//g;'
+  python3 -c 'import html, re, sys; text = html.unescape(sys.stdin.read()); sys.stdout.write(re.sub(r"\s+", " ", text).strip())' <<< "${1-}"
 }
 
 extract_field() {
   local body_file=$1
   local field=$2
-  FIELD="$field" perl -MHTML::Entities -0ne '
-    use open qw(:std :encoding(UTF-8));
+  python3 - "$field" "$body_file" <<'PY'
+import html
+import re
+import sys
 
-    sub clean {
-      my ($text) = @_;
-      $text //= "";
-      $text =~ s/<[^>]+>/ /g;
-      decode_entities($text);
-      $text =~ s/\s+/ /g;
-      $text =~ s/^\s+|\s+$//g;
-      return $text;
-    }
+field = sys.argv[1]
+path = sys.argv[2]
+with open(path, "r", encoding="utf-8", errors="replace") as handle:
+    body = handle.read()
 
-    my $html = $_;
-    if (($ENV{FIELD} // "") eq "title") {
-      if ($html =~ m{<title[^>]*>(.*?)</title>}is) {
-        print clean($1);
-      }
-    } elsif (($ENV{FIELD} // "") eq "description") {
-      if ($html =~ m{<meta\b[^>]*name=["'\''"]description["'\''"][^>]*content=["'\''"]([^"'\''"]*)["'\''"][^>]*>}is
-        || $html =~ m{<meta\b[^>]*content=["'\''"]([^"'\''"]*)["'\''"][^>]*name=["'\''"]description["'\''"][^>]*>}is) {
-        print clean($1);
-      }
-    } elsif (($ENV{FIELD} // "") eq "canonical") {
-      if ($html =~ m{<link\b[^>]*rel=["'\''"]canonical["'\''"][^>]*href=["'\''"]([^"'\''"]*)["'\''"][^>]*>}is
-        || $html =~ m{<link\b[^>]*href=["'\''"]([^"'\''"]*)["'\''"][^>]*rel=["'\''"]canonical["'\''"][^>]*>}is) {
-        print clean($1);
-      }
-    } elsif (($ENV{FIELD} // "") eq "h1") {
-      my @items;
-      while ($html =~ m{<h1\b[^>]*>(.*?)</h1>}isg) {
-        my $text = clean($1);
-        push @items, $text if length $text;
-        last if @items >= 3;
-      }
-      print join("\n", @items);
-    }
-  ' < "$body_file"
+
+def clean(text: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", text or "")
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def attr_value(attrs: str, name: str) -> str:
+    pattern = r"""\b{}\s*=\s*(['"])(.*?)\1""".format(re.escape(name))
+    match = re.search(pattern, attrs, flags=re.IGNORECASE | re.DOTALL)
+    return match.group(2) if match else ""
+
+
+if field == "title":
+    match = re.search(r"<title[^>]*>(.*?)</title>", body, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        print(clean(match.group(1)), end="")
+elif field == "description":
+    for match in re.finditer(r"<meta\b([^>]*)>", body, flags=re.IGNORECASE | re.DOTALL):
+        attrs = match.group(1)
+        if attr_value(attrs, "name").lower() == "description":
+            print(clean(attr_value(attrs, "content")), end="")
+            break
+elif field == "canonical":
+    for match in re.finditer(r"<link\b([^>]*)>", body, flags=re.IGNORECASE | re.DOTALL):
+        attrs = match.group(1)
+        if attr_value(attrs, "rel").lower() == "canonical":
+            print(clean(attr_value(attrs, "href")), end="")
+            break
+elif field == "h1":
+    values = []
+    for match in re.finditer(r"<h1\b[^>]*>(.*?)</h1>", body, flags=re.IGNORECASE | re.DOTALL):
+        value = clean(match.group(1))
+        if value:
+            values.append(value)
+        if len(values) >= 3:
+            break
+    print("\n".join(values), end="")
+PY
 }
 
 join_lines() {

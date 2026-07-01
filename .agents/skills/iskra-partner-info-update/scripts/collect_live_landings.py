@@ -5,14 +5,13 @@ import os
 import sys
 
 
-def main() -> int:
+def main() -> None:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     shell_script = os.path.join(script_dir, "collect_live_landings.sh")
     if not os.path.exists(shell_script):
         raise SystemExit(f"missing helper script: {shell_script}")
-    os.execv("/bin/bash", ["/bin/bash", shell_script, *sys.argv[1:]])
-    return 0
+    os.execvp("bash", ["bash", shell_script, *sys.argv[1:]])
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

@@ -30,8 +30,8 @@
 - `.agents/skills/iskra-partner-info-update/SKILL.md` — the source of truth for the recurring update workflow: sources, safety rules, source priority, run flow, commit/report contract.
 - `.agents/skills/iskra-partner-info-update/scripts/collect_live_landings.py` — fetches approved live landing URLs and writes a Markdown observation report under `temp/iskra-partner-info-update/`.
 - `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh` — deterministic public-content verification: markdown lint, link check, hard forbidden text scan, risky wording warnings and `git diff --check`.
-- `agent_docs/development-history/2026-06-30-daily-iskra-partner-info-update.md` — records that the repo gained a daily update automation workflow.
-- `agent_docs/development-history/README.md` — adds the new history entry.
+- `agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md` — records that the repo gained a daily update automation workflow.
+- `agent_docs/development-history/README.md` — inspect only; do not edit when its local rules require timestamped filenames without a manual index entry.
 - Codex automation config — created through `automation_update`; do not write automation TOML by hand.
 - Ecosystem inbox entry — append a one-line agent ecosystem change after the skill and automation are created.
 
@@ -641,8 +641,8 @@ Expected: commit succeeds. `temp/iskra-partner-info-update/live-landings.md` rem
 
 **Files:**
 - Modify: `agent_docs/index.md`
-- Create: `agent_docs/development-history/2026-06-30-daily-iskra-partner-info-update.md`
-- Modify: `agent_docs/development-history/README.md`
+- Create: `agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md`
+- Inspect only: `agent_docs/development-history/README.md`
 - Test: markdownlint on changed docs.
 
 **Interfaces:**
@@ -669,7 +669,7 @@ Apply this patch:
 
 ```diff
 *** Begin Patch
-*** Add File: agent_docs/development-history/2026-06-30-daily-iskra-partner-info-update.md
+*** Add File: agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md
 +# Daily Iskra Partner Info Update Automation
 +
 +Date: 2026-06-30
@@ -696,7 +696,7 @@ Apply this patch:
 *** End Patch
 ```
 
-- [ ] **Step 3: Add the entry to the history index**
+- [ ] **Step 3: Check the history index rules**
 
 First inspect the file:
 
@@ -704,26 +704,16 @@ First inspect the file:
 sed -n '1,180p' agent_docs/development-history/README.md
 ```
 
-Then apply this patch, placing the new entry at the top of the dated list:
+If the file requires manual index entries, add one using the existing format. If it only defines filename rules, do not edit it.
 
-```diff
-*** Begin Patch
-*** Update File: agent_docs/development-history/README.md
-@@
- # Development History
-+
-+- [2026-06-30 — Daily Iskra Partner Info Update Automation](2026-06-30-daily-iskra-partner-info-update.md)
-*** End Patch
-```
-
-If the file uses a different heading or list shape, keep the existing structure and add exactly one new entry with the same link text and target.
+This repository uses timestamped development-history filenames, so the entry file is `2026-06-30-0500-daily-iskra-partner-info-update.md` and `agent_docs/development-history/README.md` is left unchanged.
 
 - [ ] **Step 4: Lint docs**
 
 Run:
 
 ```bash
-npx --yes markdownlint-cli2@latest agent_docs/index.md agent_docs/development-history/README.md agent_docs/development-history/2026-06-30-daily-iskra-partner-info-update.md
+npx --yes markdownlint-cli2@latest agent_docs/index.md agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md
 git diff --check
 ```
 
@@ -734,7 +724,7 @@ Expected: markdownlint has `0 error(s)` and `git diff --check` has no output.
 Run:
 
 ```bash
-git add agent_docs/index.md agent_docs/development-history/README.md agent_docs/development-history/2026-06-30-daily-iskra-partner-info-update.md
+git add agent_docs/index.md agent_docs/development-history/2026-06-30-0500-daily-iskra-partner-info-update.md
 git commit -m "docs: document iskra partner info automation"
 ```
 
