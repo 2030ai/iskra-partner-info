@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for required_command in git npx rg; do
+for required_command in find git npx rg; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     printf 'required command not found: %s\n' "$required_command" >&2
     exit 127

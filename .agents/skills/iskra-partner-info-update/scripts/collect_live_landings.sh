@@ -113,7 +113,7 @@ sys.exit(1)
 PY
 }
 
-if [ -f "$SKILL_FILE" ]; then
+if [ -f "$SKILL_FILE" ] && command -v perl >/dev/null 2>&1; then
   skill_output="$(
     perl -ne '
       BEGIN { $section = ""; $in_sensitive = 0; }
@@ -326,7 +326,7 @@ fetch_page() {
   local url=$1
   local timeout=$2
   local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display
-  local current_url location next_url redirect_count
+  local current_url location next_url redirect_count start_epoch elapsed remaining_timeout
 
   slug="$(printf '%s' "$url" | sed 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[^A-Za-z0-9]#_#g; s/^_//; s/_$//')"
   body_file="$TMPDIR/${slug}.body"
@@ -334,14 +334,27 @@ fetch_page() {
   meta_file="$TMPDIR/${slug}.meta"
   current_url="$url"
   redirect_count=0
+  start_epoch="$(date +%s)"
 
   while :; do
+    remaining_timeout="$timeout"
+    if [[ "$timeout" =~ ^[0-9]+$ ]]; then
+      elapsed=$(($(date +%s) - start_epoch))
+      remaining_timeout=$((timeout - elapsed))
+      if [ "$remaining_timeout" -le 0 ]; then
+        code="fetch_error(timeout)"
+        final_url="$current_url"
+        content_type=""
+        rm -f "$body_file"
+        break
+      fi
+    fi
     rm -f "$body_file" "$headers_file"
     if curl_meta="$(
       curl \
         --silent \
         --show-error \
-        --max-time "$timeout" \
+        --max-time "$remaining_timeout" \
         --user-agent "iskra-partner-info-update/1.0" \
         --header "Accept: text/html,application/xhtml+xml,application/xml,text/plain;q=0.8,*/*;q=0.5" \
         --dump-header "$headers_file" \
