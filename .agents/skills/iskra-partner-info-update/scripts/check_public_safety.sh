@@ -84,11 +84,6 @@ if [ "${#AGENT_MD_FILES[@]}" -gt 0 ]; then
   fi
 fi
 
-section "agent_docs portability placeholders scan (non-blocking)"
-if rg -n "\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" agent_docs --glob '*.md'; then
-  printf 'placeholder terms found in agent_docs (non-blocking, informational):\n'
-fi
-
 section "legal review warning scan"
 rg -ni "реестр|фстэк|152-фз|сертифиц|соответствует|локальн|LLM|gateway|on-premise" "${PUBLIC_MD_FILES[@]}" agent_docs || true
 

@@ -343,6 +343,8 @@ The shell collector must:
 - accept `--output` and `--timeout`;
 - create the parent directory for any custom `--output` path;
 - read live URLs from the skill when possible and otherwise use the built-in URL list;
+- allow only approved public landing domains when using skill-derived URLs: `iskrabot.ru` and its subdomains;
+- fall back to the built-in URL list when all skill-derived URLs are filtered out;
 - always include built-in legal/risk patterns before adding skill-derived patterns;
 - include partner-economics regex checks;
 - fetch pages with `curl`;
@@ -366,7 +368,7 @@ Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh`
 - skip public `rg` scans when `PUBLIC_MD_FILES` is empty so they never widen to the whole repository;
 - run a separate blocking hard-leak scan over committed agent files under `agent_docs/` and `.agents/` for absolute paths, placeholders and actual secret-like value patterns;
 - include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
-- keep `agent_docs` scans informational/non-blocking unless the local policy explicitly says otherwise;
+- keep the legal/risky wording scan over `agent_docs` warning-only because agent docs intentionally document forbidden examples;
 - run a legal warning scan and `git diff --check`;
 - exit non-zero when any blocking check fails.
 

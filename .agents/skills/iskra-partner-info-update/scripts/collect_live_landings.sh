@@ -93,6 +93,15 @@ RISK_REGEXES=(
 URLS=()
 PATTERNS=()
 
+is_allowed_live_url() {
+  case "$1" in
+    https://iskrabot.ru|https://iskrabot.ru/*|https://*.iskrabot.ru|https://*.iskrabot.ru/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 if [ -f "$SKILL_FILE" ]; then
   skill_output="$(
     perl -ne '
@@ -143,7 +152,11 @@ if [ -f "$SKILL_FILE" ]; then
   while IFS=$'\t' read -r kind value; do
     case "$kind" in
       URL)
-        URLS+=("$value")
+        if is_allowed_live_url "$value"; then
+          URLS+=("$value")
+        else
+          printf 'skipping disallowed live landing URL: %s\n' "$value" >&2
+        fi
         ;;
       PATTERN)
         PATTERNS+=("$value")
