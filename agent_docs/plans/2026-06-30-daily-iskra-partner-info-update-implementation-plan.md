@@ -345,6 +345,7 @@ The shell collector must:
 - always include built-in legal/risk patterns before adding skill-derived patterns;
 - include partner-economics regex checks;
 - fetch pages with `curl`;
+- record transport failures as `fetch_error(000)` instead of presenting them as ordinary HTTP responses;
 - decode HTML entities with Python stdlib `html.unescape`, not non-core Perl modules;
 - scan the full normalized response body for risky claims, truncating only human-readable output if needed;
 - write the Markdown report to `temp/iskra-partner-info-update/live-landings.md` by default.

@@ -306,6 +306,7 @@ fetch_page() {
   content_type="$(sed -n '3p' "$meta_file" | tr -d '\r')"
 
   [ -n "$code" ] || code="fetch_error"
+  [ "$code" = "000" ] && code="fetch_error(000)"
   [ -n "$final_url" ] || final_url="$url"
 
   if [ -s "$body_file" ] && (grep -qi '<html' "$body_file" || grep -qi '<title' "$body_file"); then
