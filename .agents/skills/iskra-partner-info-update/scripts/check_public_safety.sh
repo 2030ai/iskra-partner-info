@@ -93,7 +93,7 @@ fi
 
 section "hard unconfirmed public claim scan"
 if [ "${#CLAIM_SCAN_FILES[@]}" -gt 0 ]; then
-  if rg -ni "без внешних LLM|полностью локально|включено в реестр российского ПО" "${CLAIM_SCAN_FILES[@]}"; then
+  if rg -ni "без внешних LLM|полностью локально|включ[её]н[аоы]?[[:space:]]+в[[:space:]]+реестр российского ПО|в реестре российского ПО" "${CLAIM_SCAN_FILES[@]}"; then
     mark_fail
   fi
 fi

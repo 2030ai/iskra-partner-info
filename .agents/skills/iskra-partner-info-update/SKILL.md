@@ -95,7 +95,7 @@ Use Telegram only for field signals:
 
 Never publish names, deals, clients, contacts, raw quotes, chat ids, message ids, percentages, rewards, promo-code economics or private arrangements from Telegram.
 
-If telegram-read read tools are not available, use `tool_search` to expose them. If only draft/write operations are available, do not use them and record Telegram as unavailable for this run.
+If Telegram read tools are not available in the current runtime, skip Telegram signals for this run and record Telegram as unavailable. If only draft/write operations are available, do not use them.
 
 ## Source Priority
 

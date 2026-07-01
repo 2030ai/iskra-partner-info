@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+for required_command in bash curl grep mktemp python3 sed tr awk date dirname pwd; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'required command not found: %s\n' "$required_command" >&2
+    exit 127
+  fi
+done
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 cd "$REPO_ROOT"
@@ -326,6 +333,19 @@ fetch_page() {
   [ -n "$code" ] || code="fetch_error"
   [ "$code" = "000" ] && code="fetch_error(000)"
   [ -n "$final_url" ] || final_url="$url"
+
+  if ! is_allowed_live_url "$final_url"; then
+    printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
+      "blocked_redirect($code)" \
+      "$final_url" \
+      "$content_type" \
+      "" \
+      "" \
+      "" \
+      "" \
+      "skipped: final URL outside allowlist"
+    return 0
+  fi
 
   if [ -s "$body_file" ] && (grep -qi '<html' "$body_file" || grep -qi '<title' "$body_file"); then
     title="$(extract_field "$body_file" title)"
