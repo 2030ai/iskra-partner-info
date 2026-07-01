@@ -326,7 +326,7 @@ fetch_page() {
   local url=$1
   local timeout=$2
   local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display
-  local current_url location next_url redirect_count start_epoch elapsed remaining_timeout
+  local current_url location next_url redirect_count start_epoch elapsed remaining_timeout curl_status
 
   slug="$(printf '%s' "$url" | sed 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[^A-Za-z0-9]#_#g; s/^_//; s/_$//')"
   body_file="$TMPDIR/${slug}.body"
@@ -363,7 +363,9 @@ fetch_page() {
         --write-out '%{http_code}\n%{url_effective}\n%{content_type}\n' \
         "$current_url"
     )"; then
-      :
+      curl_status=0
+    else
+      curl_status=$?
     fi
 
     printf '%s\n' "$curl_meta" > "$meta_file"
@@ -375,6 +377,13 @@ fetch_page() {
     [ -n "$code" ] || code="fetch_error"
     [ "$code" = "000" ] && code="fetch_error(000)"
     [ -n "$final_url" ] || final_url="$current_url"
+
+    if [ "$curl_status" -ne 0 ]; then
+      code="fetch_error(curl_$curl_status)"
+      content_type=""
+      rm -f "$body_file"
+      break
+    fi
 
     case "$code" in
       3??)
