@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for required_command in bash curl grep mktemp python3 sed tr awk date dirname pwd; do
+for required_command in bash curl grep mktemp python3 sed tr awk date dirname pwd rm; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     printf 'required command not found: %s\n' "$required_command" >&2
     exit 127
@@ -253,6 +253,28 @@ join_lines() {
   awk 'NF { if (out != "") out = out ", "; out = out $0 } END { print out }'
 }
 
+extract_location() {
+  python3 - "$1" <<'PY'
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    for raw_line in handle:
+        if raw_line.lower().startswith(b"location:"):
+            value = raw_line.split(b":", 1)[1].strip()
+            print(value.decode("utf-8", errors="replace"), end="")
+            break
+PY
+}
+
+resolve_redirect_url() {
+  python3 - "$1" "$2" <<'PY'
+from urllib.parse import urljoin
+import sys
+
+print(urljoin(sys.argv[1], sys.argv[2]), end="")
+PY
+}
+
 collect_hits() {
   local combined_file=$1
   local pattern
@@ -303,47 +325,80 @@ $label
 fetch_page() {
   local url=$1
   local timeout=$2
-  local slug body_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display
+  local slug body_file headers_file meta_file curl_meta code final_url content_type title description canonical h1_list h1_display combined_file hits_display
+  local current_url location next_url redirect_count
 
   slug="$(printf '%s' "$url" | sed 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[^A-Za-z0-9]#_#g; s/^_//; s/_$//')"
   body_file="$TMPDIR/${slug}.body"
+  headers_file="$TMPDIR/${slug}.headers"
   meta_file="$TMPDIR/${slug}.meta"
+  current_url="$url"
+  redirect_count=0
 
-  if curl_meta="$(
-    curl \
-      --silent \
-      --show-error \
-      --location \
-      --max-time "$timeout" \
-      --user-agent "iskra-partner-info-update/1.0" \
-      --header "Accept: text/html,application/xhtml+xml,application/xml,text/plain;q=0.8,*/*;q=0.5" \
-      --output "$body_file" \
-      --write-out '%{http_code}\n%{url_effective}\n%{content_type}\n' \
-      "$url"
-  )"; then
-    :
-  fi
+  while :; do
+    rm -f "$body_file" "$headers_file"
+    if curl_meta="$(
+      curl \
+        --silent \
+        --show-error \
+        --max-time "$timeout" \
+        --user-agent "iskra-partner-info-update/1.0" \
+        --header "Accept: text/html,application/xhtml+xml,application/xml,text/plain;q=0.8,*/*;q=0.5" \
+        --dump-header "$headers_file" \
+        --output "$body_file" \
+        --write-out '%{http_code}\n%{url_effective}\n%{content_type}\n' \
+        "$current_url"
+    )"; then
+      :
+    fi
 
-  printf '%s\n' "$curl_meta" > "$meta_file"
+    printf '%s\n' "$curl_meta" > "$meta_file"
 
-  code="$(sed -n '1p' "$meta_file" | tr -d '\r')"
-  final_url="$(sed -n '2p' "$meta_file" | tr -d '\r')"
-  content_type="$(sed -n '3p' "$meta_file" | tr -d '\r')"
+    code="$(sed -n '1p' "$meta_file" | tr -d '\r')"
+    final_url="$(sed -n '2p' "$meta_file" | tr -d '\r')"
+    content_type="$(sed -n '3p' "$meta_file" | tr -d '\r')"
 
-  [ -n "$code" ] || code="fetch_error"
-  [ "$code" = "000" ] && code="fetch_error(000)"
-  [ -n "$final_url" ] || final_url="$url"
+    [ -n "$code" ] || code="fetch_error"
+    [ "$code" = "000" ] && code="fetch_error(000)"
+    [ -n "$final_url" ] || final_url="$current_url"
 
-  if ! is_allowed_live_url "$final_url"; then
+    case "$code" in
+      3??)
+        location="$(extract_location "$headers_file")"
+        [ -n "$location" ] || break
+        next_url="$(resolve_redirect_url "$final_url" "$location")"
+        if ! is_allowed_live_url "$next_url"; then
+          code="blocked_redirect($code)"
+          final_url="$next_url"
+          content_type=""
+          rm -f "$body_file"
+          break
+        fi
+        redirect_count=$((redirect_count + 1))
+        if [ "$redirect_count" -gt 5 ]; then
+          code="redirect_limit($code)"
+          final_url="$next_url"
+          content_type=""
+          rm -f "$body_file"
+          break
+        fi
+        current_url="$next_url"
+        continue
+        ;;
+    esac
+    break
+  done
+
+  if [[ "$code" == blocked_redirect* ]] || [[ "$code" == redirect_limit* ]] || ! is_allowed_live_url "$final_url"; then
     printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
-      "blocked_redirect($code)" \
+      "$code" \
       "$final_url" \
       "$content_type" \
       "" \
       "" \
       "" \
       "" \
-      "skipped: final URL outside allowlist"
+      "skipped: redirect target outside allowlist"
     return 0
   fi
 

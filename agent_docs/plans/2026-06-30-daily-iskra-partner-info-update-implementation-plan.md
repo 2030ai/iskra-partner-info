@@ -345,7 +345,7 @@ The shell collector must:
 - read live URLs from the skill when possible and otherwise use the built-in URL list;
 - fail fast when required local commands such as `bash`, `curl` and `python3` are unavailable;
 - parse skill-derived URL hosts before allowlisting, and allow only approved public landing domains: `iskrabot.ru` and its subdomains;
-- validate the effective URL after redirects before parsing or reporting the response body;
+- follow redirects manually and validate each effective URL before downloading, parsing or reporting the response body;
 - fall back to the built-in URL list when all skill-derived URLs are filtered out;
 - always include built-in legal/risk patterns before adding skill-derived patterns;
 - include partner-economics regex checks;
@@ -368,7 +368,7 @@ Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh`
 - fail fast when required local commands such as `git`, `npx` or `rg` are unavailable;
 - use pinned `markdownlint-cli2@0.23.0` and `markdown-link-check@3.14.2`, with environment-variable overrides for planned upgrades;
 - run blocking metadata, secret-like, hard risky-wording and partner-economics scans over public Markdown files;
-- run an additional unconfirmed-claim scan for phrases such as `без внешних LLM`, `полностью локально` and `включен/включена/включено/включены в реестр российского ПО`, excluding the legal policy page where forbidden examples are documented;
+- run an additional unconfirmed-claim scan for phrases such as `без внешних LLM`, `полностью локально`, `включен/включена/включено/включены в реестр российского ПО` and `внесен/внесена/внесено/внесены в реестр российского ПО`, excluding the legal policy page where forbidden examples are documented;
 - skip public `rg` scans when `PUBLIC_MD_FILES` is empty so they never widen to the whole repository;
 - run a separate blocking hard-leak scan over committed agent Markdown files for placeholders, and over agent Markdown plus `.agents` helper scripts for absolute paths and actual secret-like value patterns;
 - include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
