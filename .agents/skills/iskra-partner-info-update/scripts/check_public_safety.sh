@@ -47,23 +47,31 @@ for file in "${PUBLIC_MD_FILES[@]}"; do
 done
 
 section "hard public metadata scan"
-if rg -n "2030AI|/(Users|home|sessions)/|\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" "${PUBLIC_MD_FILES[@]}"; then
-  mark_fail
+if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
+  if rg -n "2030AI|/(Users|home|sessions)/|\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" "${PUBLIC_MD_FILES[@]}"; then
+    mark_fail
+  fi
 fi
 
 section "secret-like public scan"
-if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расч[её]тный сч[её]т|корреспондентский сч[её]т" "${PUBLIC_MD_FILES[@]}"; then
-  mark_fail
+if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
+  if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расч[её]тный сч[её]т|корреспондентский сч[её]т" "${PUBLIC_MD_FILES[@]}"; then
+    mark_fail
+  fi
 fi
 
 section "hard risky wording scan"
-if rg -ni "данные никогда|не уходят наружу|не передаются третьим лицам|не покидают периметр|полностью соответствует 152-фз|сертифицирован[а-я ]*фстэк" "${PUBLIC_MD_FILES[@]}"; then
-  mark_fail
+if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
+  if rg -ni "данные никогда|не уходят наружу|не передаются третьим лицам|не покидают периметр|полностью соответствует 152-фз|сертифицирован[а-я ]*фстэк" "${PUBLIC_MD_FILES[@]}"; then
+    mark_fail
+  fi
 fi
 
 section "partner economics public scan"
-if rg -ni "вознагражд|рефераль|реферал|партн[её]рск[а-я ]*(процент|выплат|комисс|вознагражд|доход|заработ)|получайте [0-9]+%|зарабатывайте|[0-9]+%.*(платеж|оплат|привед[её]н|клиент|партн[её]р|комисс|вознагражд)|(промо-код|промокод).*(экономик|вознагражд|выплат|комисс|процент|%)" "${PUBLIC_MD_FILES[@]}"; then
-  mark_fail
+if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
+  if rg -ni "вознагражд|рефераль|реферал|партн[её]рск[а-я ]*(процент|выплат|комисс|вознагражд|доход|заработ)|получайте [0-9]+%|зарабатывайте|[0-9]+%.*(платеж|оплат|привед[её]н|клиент|партн[её]р|комисс|вознагражд)|(промо-код|промокод).*(экономик|вознагражд|выплат|комисс|процент|%)" "${PUBLIC_MD_FILES[@]}"; then
+    mark_fail
+  fi
 fi
 
 section "agent hard leak scan"

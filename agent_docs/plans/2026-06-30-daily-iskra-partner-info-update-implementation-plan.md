@@ -363,6 +363,7 @@ Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh`
 - build `PUBLIC_MD_FILES` from `README.md`, `CHANGELOG.md`, `LICENSE.md` and `docs/**/*.md`;
 - use pinned `markdownlint-cli2@0.23.0` and `markdown-link-check@3.14.2`, with environment-variable overrides for planned upgrades;
 - run blocking metadata, secret-like, hard risky-wording and partner-economics scans over public Markdown files;
+- skip public `rg` scans when `PUBLIC_MD_FILES` is empty so they never widen to the whole repository;
 - run a separate blocking hard-leak scan over committed agent files under `agent_docs/` and `.agents/` for absolute paths, placeholders and actual secret-like value patterns;
 - include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
 - keep `agent_docs` scans informational/non-blocking unless the local policy explicitly says otherwise;
