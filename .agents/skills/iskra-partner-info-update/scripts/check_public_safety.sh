@@ -44,7 +44,7 @@ if rg -n "2030AI|/(Users|home|sessions)/|\bTBD\b|\bTODO\b|PLACEHOLDER|\[отве
 fi
 
 section "secret-like public scan"
-if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расчетный счет|корреспондентский счет" "${PUBLIC_MD_FILES[@]}"; then
+if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расч[её]тный сч[её]т|корреспондентский сч[её]т" "${PUBLIC_MD_FILES[@]}"; then
   mark_fail
 fi
 

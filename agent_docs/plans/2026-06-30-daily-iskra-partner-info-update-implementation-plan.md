@@ -356,67 +356,15 @@ The Python wrapper must:
 
 - [ ] **Step 2: Add the safety check script**
 
-Apply this patch:
+Create `.agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh` with these constraints:
 
-```diff
-*** Begin Patch
-*** Add File: .agents/skills/iskra-partner-info-update/scripts/check_public_safety.sh
-+#!/usr/bin/env bash
-+set -euo pipefail
-+
-+ROOT="${1:-$(git rev-parse --show-toplevel)}"
-+cd "$ROOT"
-+
-+fail=0
-+MARKDOWNLINT_CLI2_VERSION="${MARKDOWNLINT_CLI2_VERSION:-0.23.0}"
-+MARKDOWN_LINK_CHECK_VERSION="${MARKDOWN_LINK_CHECK_VERSION:-3.14.2}"
-+
-+section() {
-+  printf '\n== %s ==\n' "$1"
-+}
-+
-+mark_fail() {
-+  fail=1
-+}
-+
-+section "markdownlint"
-+npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}" "**/*.md" || mark_fail
-+
-+section "markdown link check"
-+shopt -s globstar nullglob
-+for file in README.md docs/**/*.md; do
-+  npx --yes "markdown-link-check@${MARKDOWN_LINK_CHECK_VERSION}" "$file" || mark_fail
-+done
-+
-+section "hard public metadata scan"
-+if rg -n "2030""AI|/(Users|home|sessions)/|T""BD|T""ODO|PLACE""HOLDER|\\[ответственный\\]" README.md CHANGELOG.md LICENSE.md docs agent_docs; then
-+  mark_fail
-+fi
-+
-+section "secret-like public scan"
-+if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расч[её]тный счет|корреспондентский счет" README.md CHANGELOG.md LICENSE.md docs agent_docs; then
-+  mark_fail
-+fi
-+
-+section "hard risky wording scan"
-+if rg -ni "данные никогда|не уходят наружу|не передаются третьим лицам|не покидают периметр|полностью соответствует 152-фз|сертифицирован[а-я ]*фстэк" README.md CHANGELOG.md docs; then
-+  mark_fail
-+fi
-+
-+section "legal review warning scan"
-+rg -ni "реестр|фстэк|152-фз|сертифиц|соответствует|локальн|LLM|gateway|on-premise" docs README.md || true
-+
-+section "git diff check"
-+git diff --check || mark_fail
-+
-+if [ "$fail" -ne 0 ]; then
-+  printf '\npublic safety check failed\n' >&2
-+  exit 1
-+fi
-+
-+printf '\npublic safety check passed\n'
-*** End Patch
-```
+- build `PUBLIC_MD_FILES` from `README.md`, `CHANGELOG.md`, `LICENSE.md` and `docs/**/*.md`;
+- use pinned `markdownlint-cli2@0.23.0` and `markdown-link-check@3.14.2`, with environment-variable overrides for planned upgrades;
+- run blocking metadata, secret-like, hard risky-wording and partner-economics scans only over public Markdown files;
+- include both `е` and `ё` variants for Russian bank-account wording such as `расч[её]тный сч[её]т` and `корреспондентский сч[её]т`;
+- keep `agent_docs` scans informational/non-blocking unless the local policy explicitly says otherwise;
+- run a legal warning scan and `git diff --check`;
+- exit non-zero when any blocking check fails.
 
 - [ ] **Step 3: Make scripts executable**
 
