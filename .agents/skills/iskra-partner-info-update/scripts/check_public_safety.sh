@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${1:-$(git rev-parse --show-toplevel)}"
+cd "$ROOT"
+
+fail=0
+PUBLIC_MD_FILES=()
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+mark_fail() {
+  fail=1
+}
+
+for top_file in README.md CHANGELOG.md LICENSE.md; do
+  if [ -f "$top_file" ]; then
+    PUBLIC_MD_FILES+=("$top_file")
+  fi
+done
+if [ -d docs ]; then
+  while IFS= read -r -d '' file; do
+    PUBLIC_MD_FILES+=("$file")
+  done < <(find docs -type f -name '*.md' -print0)
+fi
+
+section "markdownlint"
+if [ "${#PUBLIC_MD_FILES[@]}" -gt 0 ]; then
+  npx --yes markdownlint-cli2@latest "${PUBLIC_MD_FILES[@]}" || mark_fail
+fi
+
+section "markdown link check"
+for file in "${PUBLIC_MD_FILES[@]}"; do
+  npx --yes markdown-link-check "$file" || mark_fail
+done
+
+section "hard public metadata scan"
+if rg -n "2030AI|/(Users|home|sessions)/|\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" "${PUBLIC_MD_FILES[@]}"; then
+  mark_fail
+fi
+
+section "secret-like public scan"
+if rg -ni "password|token|secret|ssh|private key|DemoPass|api key|bank|iban|бик|расчетный счет|корреспондентский счет" "${PUBLIC_MD_FILES[@]}"; then
+  mark_fail
+fi
+
+section "hard risky wording scan"
+if rg -ni "данные никогда|не уходят наружу|не передаются третьим лицам|не покидают периметр|полностью соответствует 152-фз|сертифицирован[а-я ]*фстэк" "${PUBLIC_MD_FILES[@]}"; then
+  mark_fail
+fi
+
+section "partner economics public scan"
+if rg -ni "вознагражд|рефераль|реферал|партн[её]рск[а-я ]*(процент|выплат|комисс|вознагражд|доход|заработ)|получайте [0-9]+%|зарабатывайте|[0-9]+%.*(платеж|оплат|привед[её]н|клиент|партн[её]р|комисс|вознагражд)|(промо-код|промокод).*(экономик|вознагражд|выплат|комисс|процент|%)" "${PUBLIC_MD_FILES[@]}"; then
+  mark_fail
+fi
+
+section "agent_docs portability placeholders scan (non-blocking)"
+if rg -n "\bTBD\b|\bTODO\b|PLACEHOLDER|\[ответственный\]" agent_docs --glob '*.md'; then
+  printf 'placeholder terms found in agent_docs (non-blocking, informational):\n'
+fi
+
+section "legal review warning scan"
+rg -ni "реестр|фстэк|152-фз|сертифиц|соответствует|локальн|LLM|gateway|on-premise" "${PUBLIC_MD_FILES[@]}" agent_docs || true
+
+section "git diff check"
+git diff --check || mark_fail
+
+if [ "$fail" -ne 0 ]; then
+  printf '\npublic safety check failed\n' >&2
+  exit 1
+fi
+
+printf '\npublic safety check passed\n'

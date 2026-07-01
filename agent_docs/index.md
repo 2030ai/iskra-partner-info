@@ -6,6 +6,8 @@ Read only the relevant files for the task.
 
 - `agent_docs/architecture.md` — repository structure, source-of-truth rules, and publication flow.
 - `agent_docs/glossary.md` — product and partner terminology.
+- `agent_docs/plans/` — design and implementation plans for agent-maintained workflows.
+- `.agents/skills/iskra-partner-info-update/SKILL.md` — daily automation procedure for refreshing partner-safe Искра public information.
 - `agent_docs/development-history/README.md` — development history index.
 - `agent_docs/adr/README.md` — architecture decision records.
 
@@ -13,7 +15,7 @@ Read only the relevant files for the task.
 
 - `README.md` — public entry point for partners.
 - `docs/overview.md` — short product overview.
-- `docs/capabilities/index.md` — index of sellable Iskra capabilities.
+- `docs/capabilities/index.md` — index of sellable Искра capabilities.
 - `docs/sales/positioning.md` — positioning and sales framing.
 - `docs/sales/partner-process.md` — partner process.
 - `docs/commercial/pricing.md` — public commercial model.
