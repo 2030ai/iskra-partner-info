@@ -4,6 +4,15 @@ All notable public content changes in this repository are documented here.
 
 The format follows Keep a Changelog, and this repository uses calendar-based public documentation releases.
 
+## [0.1.4] - 2026-07-02
+
+### Changed
+
+- Split the commercial model into product / technology, integration, education, and consulting blocks so partner-facing pricing does not mix unrelated services.
+- Expanded on-premise wording with license tiers, required commercial proposal line separation, and explicit exclusions for infrastructure, LLM, gateway, integrations, and SLA.
+- Added the public hourly role grid for consulting, education, post-intensive support, and integration work.
+- Expanded the integration project flow for Iskra around discovery, architecture, PoV, implementation, governance, scaling, and SLA.
+
 ## [0.1.3] - 2026-07-01
 
 ### Added
