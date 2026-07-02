@@ -9,7 +9,7 @@ The format follows Keep a Changelog, and this repository uses calendar-based pub
 ### Changed
 
 - Split the commercial model into product / technology, integration, education, and consulting blocks so partner-facing pricing does not mix unrelated services.
-- Expanded on-premise wording with license tiers, required КП line separation, and explicit exclusions for infrastructure, LLM, gateway, integrations, and SLA.
+- Expanded on-premise wording with license tiers, required commercial proposal line separation, and explicit exclusions for infrastructure, LLM, gateway, integrations, and SLA.
 - Added the public hourly role grid for consulting, education, post-intensive support, and integration work.
 - Expanded the integration project flow for Iskra around discovery, architecture, PoV, implementation, governance, scaling, and SLA.
 
