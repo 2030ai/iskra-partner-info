@@ -9,6 +9,7 @@
 - [Обзор продукта](docs/overview.md)
 - [Возможности](docs/capabilities/index.md)
 - [Позиционирование](docs/sales/positioning.md)
+- [Ответы на вопросы и возражения](docs/sales/objection-handling.md)
 - [Партнёрский процесс](docs/sales/partner-process.md)
 - [Коммерческая модель](docs/commercial/pricing.md)
 - [Варианты развёртывания](docs/commercial/deployment-options.md)
