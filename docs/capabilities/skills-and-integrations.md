@@ -181,4 +181,4 @@ API-ключи создаются и отзываются пользовател
 - [AI-агент](agent-mode.md)
 - [Развёртывание и LLM](deployment-and-llm.md)
 - [Технический checklist интеграционного presale](../integration/presale-checklist.md)
-- [Партнёрский процесс](../sales/partner-process.md)
+- [Процесс продажи и внедрения](../sales/sales-and-delivery-process.md)
