@@ -1,6 +1,6 @@
 # Возможности Искры
 
-Дата обновления: 2026-07-21
+Дата обновления: 2026-09-04
 
 Возможность — это крупный продаваемый блок продукта, который можно отправить партнёру или клиенту отдельной ссылкой. Мелкие фичи описываются внутри соответствующей возможности.
 
@@ -19,6 +19,7 @@
 - [Файлы и артефакты](files-and-artifacts.md) — `available`
 - [База знаний](knowledge-base.md) — `requires_setup`
 - [Пространства и проекты](spaces-and-projects.md) — `available`
+- [Планы](plans.md) — `available`
 - [Организации и администрирование](organizations-and-admin.md) — `available`
 - [Навыки и интеграции](skills-and-integrations.md) — `requires_custom_project`
 - [Безопасность и инспектор](security-and-inspector.md) — `requires_setup`
