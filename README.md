@@ -19,8 +19,8 @@
 ## Путь проекта
 
 1. [Квалифицировать задачу и провести discovery](docs/playbooks/discovery-and-qualification.md).
-2. Выбрать [проверяемый reference-сценарий](docs/cases/reference-scenarios.md)
-   или сформулировать собственный.
+2. Выбрать задачу из [библиотеки 58 кейсов](docs/cases/library/README.md),
+   [reference-сценарий](docs/cases/reference-scenarios.md) или сформулировать собственный.
 3. Провести [PoV с метриками, критериями приёмки и решением go/no-go](docs/playbooks/pov-and-acceptance.md).
 4. Разделить в предложении лицензию Искры, инфраструктуру, интеграцию,
    внедрение, обучение и сопровождение.
