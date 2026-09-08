@@ -18,6 +18,10 @@
 
 ## Путь проекта
 
+Для создания решений используйте [руководство по навыкам](docs/integration/skills-integrator-guide.md):
+основа — текстовый навык, а программные подключения к внешним сервисам обычно
+готовит команда разработки.
+
 1. [Квалифицировать задачу и провести discovery](docs/playbooks/discovery-and-qualification.md).
 2. Выбрать задачу из [библиотеки 58 кейсов](docs/cases/library/README.md),
    [reference-сценарий](docs/cases/reference-scenarios.md) или сформулировать собственный.

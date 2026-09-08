@@ -585,6 +585,7 @@ WAV, FLAC, OGG или M4A размером до 4 МиБ и длительнос
 
 ## Связанные материалы
 
+- [Руководство по созданию текстовых навыков](../integration/skills-integrator-guide.md)
 - [AI-агент](agent-mode.md)
 - [Развёртывание и LLM](deployment-and-llm.md)
 - [Технический checklist интеграционного presale](../integration/presale-checklist.md)
